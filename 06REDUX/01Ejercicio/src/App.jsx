@@ -2,6 +2,7 @@ import { useState } from "react"
 import {useSelector, useDispatch} from 'react-redux'
 import PokemonApp from "./PokemonApp"
 import { decrement, increment, reset } from "./store/slices/counter/counterSlice"
+import TodoApp from "./TodoApp"
 
 function App() {
  
@@ -33,6 +34,9 @@ function App() {
       </main>
       <div className="text-center mt-20">
         <PokemonApp />
+      </div>
+      <div className="m-10">
+        <TodoApp />
       </div>
     
     </>

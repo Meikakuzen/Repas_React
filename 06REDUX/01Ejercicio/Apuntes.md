@@ -447,3 +447,234 @@ export default PokemonApp
 
 ---
 ## RTK QUERY
+
+- RTK vienbe incluida en redux-toolkit nativamente
+- Sirve para hacer llamados a endpoints. Está hecho para optimizar las peticiones http
+- Evita traer info duplicada si ya está almacenada en caché
+- Hay bastante códgo pero vale la pena. No solo obtiene la data, crea custom hooks y otras cosas
+- Creo el componente TodoApp.jsx
+- Creo /src/store/apis/todosApi.js
+  - Coloco el nombre al reducer
+  - El baseQuery, es la URL base
+  - Creo los endpoints con el builder en el callback
+    - Creo un query ( podría ser mutation si no fuera una petición GET) al endpoint '/todos'
+    - Sería concatenar /todos al baseUrl
+  - Desestructuro el custom hook que crea automáticamente
+
+~~~js
+import { createApi, fetchBaseQuery} from '@reduxjs/toolkit/query/react'
+
+
+export const todosApi = createApi({
+
+    reducerPath: 'todos',
+    baseQuery: fetchBaseQuery({
+        baseUrl: 'https://jsonplaceholder.typicode.com'
+    }),
+
+    endpoints: (builder)=> ({
+        
+        getTodos: builder.query({
+            query: ()=>'/todos'
+        })
+    })
+
+})
+
+//De aquí puedo extraer los custom hooks que crea automaticamente
+
+export const {useGetTodosQuery} = todosApi;
+~~~
+
+- Falta decirle al store el middleware y el reducer
+- Escribo entre corchetes porque es una propiedad computada, si no no puedo poner el .reducerPath.
+- Falta configurar el middleware
+- Invoco el getDefaultMiddleware y le concateno el todosApi.middleware. No importo el getDefaultMiddleware para que no de error
+- Un middleware no es mñas que una función que se ejecuta antes que otra
+- store:
+~~~js
+import {configureStore} from '@reduxjs/toolkit'
+import counterReducer from '../store/slices/counter/counterSlice'
+import pokemonReducer from '../store/slices/pokemon/pokemonSlice'
+import { todosApi } from './apis/todosApi'
+
+export const store = configureStore({
+    reducer: {
+        counter: counterReducer,
+        pokemons: pokemonReducer,
+        [todosApi.reducerPath]: todosApi.reducer,
+
+    },
+    middleware: (getDefaultMiddleware)=>getDefaultMiddleware().concat(todosApi.middleware)
+})
+~~~
+
+- Si ahora voy a REDUX DEVTOOLS veo que tengop el estado todos
+
+- Renombro la data a todos y lo inicio como un arreglo vacío para poder hacer el .map
+- Seteo el isLoading con un ternario
+- renderizo los todos con el .map
+
+~~~js
+import {useGetTodosQuery} from './store/apis/todosApi'
+
+const TodoApp = () => {
+
+
+    const {data: todos = [], isLoading} = useGetTodosQuery()
+
+  return (
+    <>
+        <h1 className="text-6xl text-center text-yellow-700 font-mono font-black">Todos -RTK Query</h1>
+        <hr/>
+        <h4 className="text-xl font-bold text-center">{isLoading ? "isLoading...": ""}</h4>
+
+        <div className="flex justify-center">
+            <ul className="flex flex-col justify-center">
+                {todos.map(todo=>(
+
+                    <li key={todo.id}
+                    > <strong className="mx-3">{todo.completed ? "DONE": "PENDING"}</strong> {todo.title}</li>
+                ))}
+            </ul>
+
+        </div>
+
+        <div className="text-center mt-3">
+            <button className="border p-2 rounded border-yellow-600 text-yellow-700">NEXT TODO</button>
+
+        </div>
+    </>
+  )
+}
+
+export default TodoApp
+~~~
+---
+
+# Obtener un Todo por id
+
+- Creo el query, le paso el parámetro
+- Exporto el custom hook
+
+~~~js
+import { createApi, fetchBaseQuery} from '@reduxjs/toolkit/query/react'
+
+
+export const todosApi = createApi({
+
+    reducerPath: 'todos',
+    baseQuery: fetchBaseQuery({
+        baseUrl: 'https://jsonplaceholder.typicode.com'
+    }),
+
+    endpoints: (builder)=> ({
+        
+        getTodos: builder.query({
+            query: ()=>'/todos'
+        }),
+
+        getTodo: builder.query({
+            query: (todoId)=>`/todos/${todoId}`
+        }),
+
+    })
+
+})
+
+
+export const {useGetTodosQuery, useGetTodoQuery} = todosApi;
+
+~~~
+
+- Uso el custom hook, le paso el parámetro y lo renderizo con JSON.stringify
+
+~~~js
+import {useGetTodosQuery, useGetTodoQuery} from './store/apis/todosApi'
+
+const TodoApp = () => {
+
+
+    const {data: todos = [], isLoading} = useGetTodosQuery()
+    const {data: todo , isLoading2} = useGetTodoQuery(1)
+
+
+  return (
+    <>
+        <h1 className="text-6xl text-center text-yellow-700 font-mono font-black">Todos -RTK Query</h1>
+        <hr/>
+        <h4 className="text-xl font-bold text-center">{isLoading ? "isLoading...": ""}</h4>
+
+        <p className="font-bold text-xl text-center m-6">{JSON.stringify(todo)}</p>
+
+        <div className="flex justify-center">
+            <ul className="flex flex-col justify-center">
+                {todos.map(todo=>(
+
+                    <li key={todo.id}
+                    > <strong className="mx-3">{todo.completed ? "DONE": "PENDING"}</strong> {todo.title}</li>
+                ))}
+            </ul>
+
+        </div>
+
+        <div className="text-center mt-3">
+            <button className="border p-2 rounded border-yellow-600 text-yellow-700">NEXT TODO</button>
+
+        </div>
+    </>
+  )
+}
+
+export default TodoApp
+
+~~~
+
+- Para usar el botón de NEXT voy a usar un useState tradicional
+
+~~~js
+import {useGetTodosQuery, useGetTodoQuery} from './store/apis/todosApi'
+import { useState } from 'react'
+
+const TodoApp = () => {
+
+  const [todoId, setTodoId] = useState(1)
+
+   const {data: todos = [], isLoading} = useGetTodosQuery()
+    const {data: todo} = useGetTodoQuery(todoId)
+
+
+    const nextTodo = () =>{
+        setTodoId(todoId + 1)
+    }
+
+
+  return (
+    <>
+        <h1 className="text-6xl text-center text-yellow-700 font-mono font-black">Todos -RTK Query</h1>
+        <hr/>
+        <h4 className="text-xl font-bold text-center">{isLoading ? "isLoading...": ""}</h4>
+
+        <pre className="font-bold text-xl text-center m-6">{JSON.stringify(todo)}</pre>
+
+        <div className="flex justify-center">
+            <ul className="flex flex-col justify-center">
+                {todos.map(todo=>(
+
+                    <li key={todo.id}
+                    > <strong className="mx-3">{todo.completed ? "DONE": "PENDING"}</strong> {todo.title}</li>
+                ))}
+                </ul>*
+
+        </div>
+
+        <div className="text-center mt-3">
+            <button className="border p-2 rounded border-yellow-600 text-yellow-700 hover:text-yellow-900" onClick={nextTodo}>NEXT TODO</button>
+
+        </div>
+    </>
+  )
+}
+
+export default TodoApp
+~~~
