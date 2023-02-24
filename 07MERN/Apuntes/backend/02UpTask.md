@@ -770,6 +770,14 @@ export const perfil = async (req,res)=>{
 ~~~
 
 - Con este middleware prevengo el acceso a la ruta hasta que el usuario esté autenticado
+- Entonces, tengo el método comprobarPassword declarado en el modelo de Usuario que uso en el controlador autenticarUsuario
+    - Devuelve true o false. Si devuelve true genero el jwt y le paso el _id para que lo codifique ( nunca pasar info sensible )
+    - En checkAuth verifico que en los headers hay el Bearer Token, hago el .split() y separo por el espacio para quedarme solo con el jwt
+    - Decodifico el id que coloqué en el jwt con .verify y la palabra secreta
+    - Hago la busqueda del usuario con el id decodificado y la guardo en req.usuario
+    - Uso el next() para que pase al siguiente
+    - De esta manera obtengo el usuario del middleware y protejo las rutas
+
 -----
 
 
